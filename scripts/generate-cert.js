@@ -17,13 +17,14 @@ writeFileSync(cfgPath, [
   'x509_extensions = v3_req',
   '',
   '[dn]',
-  'CN = localhost',
+  'CN = hudson.com',
   '',
   '[v3_req]',
   'subjectAltName = @alt_names',
   '',
   '[alt_names]',
-  'DNS.1 = localhost',
+  'DNS.1 = hudson.com',
+  'DNS.2 = localhost',
   'IP.1 = 127.0.0.1',
 ].join('\n'));
 

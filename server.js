@@ -19,6 +19,13 @@ if (!fs.existsSync(path.join(certDir, 'key.pem'))) {
 
 const app = express();
 
+app.use((req, res, next) => {
+  if (req.hostname === 'localhost') {
+    return res.redirect(301, `https://127.0.0.1:${PORT}${req.url}`);
+  }
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
@@ -40,6 +47,6 @@ https.createServer({
   key: fs.readFileSync(path.join(certDir, 'key.pem')),
   cert: fs.readFileSync(path.join(certDir, 'cert.pem')),
 }, app).listen(PORT, () => {
-  console.log(`\nDJ Swapper → https://localhost:${PORT}`);
+  console.log(`\nDJ Swapper → https://127.0.0.1:${PORT}`);
   console.log('Cert warning: Chrome → type "thisisunsafe" | Firefox → Accept Risk\n');
 });

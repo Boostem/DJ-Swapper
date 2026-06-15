@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DJ Swapper</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d0d0d;
+  --surface: #1a1a1a;
+  --surface2: #222;
+  --border: #2a2a2a;
+  --text: #e0e0e0;
+  --muted: #777;
+  --green: #1db954;
+  --pink: #e91e8c;
+  --yellow: #f5c518;
+  --red: #ff5c5c;
+  --radius: 6px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Login */
+#login-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+.logo {
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--green) 0%, var(--pink) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.tagline { color: var(--muted); font-size: 15px; }
+.btn-spotify {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--green);
+  color: #000;
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  padding: 13px 30px;
+  border-radius: 50px;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.btn-spotify:hover { opacity: 0.88; transform: scale(1.02); }
+.error-banner {
+  background: #1a0808;
+  border: 1px solid #3d1515;
+  color: var(--red);
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  display: none;
+}
+
+/* App shell */
+#app-view {
+  display: none;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+#app-view.active { display: flex; }
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  gap: 12px;
+}
+.header-logo {
+  font-size: 17px;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--green), var(--pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-user { color: var(--muted); font-size: 13px; margin-left: auto; }
+.btn-sm {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.btn-sm:hover { color: var(--text); border-color: #555; }
+main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Playlists sidebar */
+#sidebar {
+  width: 250px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.panel-label {
+  padding: 12px 14px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#playlist-list { overflow-y: auto; flex: 1; padding: 6px 0; }
+.pl-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.1s;
+  user-select: none;
+}
+.pl-item:hover { background: var(--surface2); }
+.pl-item.active { border-left-color: var(--green); background: rgba(29,185,84,.07); }
+.pl-thumb {
+  width: 34px; height: 34px;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.pl-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pl-count { font-size: 11px; color: var(--muted); }
+
+/* Tracks area */
+#tracks-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#tracks-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#tracks-header h2 { font-size: 15px; font-weight: 700; }
+#tracks-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+#tracks-scroll { overflow-y: auto; flex: 1; }
+
+/* Empty / loading */
+.center-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--muted);
+  padding: 40px;
+}
+.center-state .icon { font-size: 40px; }
+.spinner {
+  width: 22px; height: 22px;
+  border: 2px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Track rows */
+.track-row { border-bottom: 1px solid var(--border); }
+.track-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 18px;
+  transition: background .1s;
+}
+.track-main:hover { background: var(--surface); }
+.track-num { width: 22px; text-align: right; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.track-thumb {
+  width: 38px; height: 38px;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.track-info { flex: 1; min-width: 0; }
+.track-title {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.track-artist { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track-dur {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  width: 38px;
+  text-align: right;
+}
+.track-dur.long { color: var(--green); }
+.btn-find {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btn-find:hover { background: rgba(29,185,84,.1); border-color: var(--green); color: var(--green); }
+.btn-find.open { background: rgba(29,185,84,.12); border-color: var(--green); color: var(--green); }
+.track-row.swapped .track-title::after { content: " ✓"; color: var(--green); font-weight: 400; }
+
+/* Results panel */
+.results-panel {
+  background: #131313;
+  padding: 10px 18px 10px 70px;
+  border-bottom: 1px solid var(--border);
+  display: none;
+}
+.results-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid #1d1d1d;
+}
+.result-item:last-child { border-bottom: none; }
+.result-thumb {
+  width: 34px; height: 34px;
+  border-radius: 3px;
+  object-fit: cover;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.result-info { flex: 1; min-width: 0; }
+.result-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-meta { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.result-dur {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 38px;
+  text-align: right;
+}
+.result-dur.short { color: var(--muted); }
+.result-dur.mid { color: var(--yellow); }
+.result-dur.long { color: var(--green); }
+.result-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-preview {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: color .12s;
+}
+.btn-preview:hover { color: var(--text); }
+.btn-preview.playing { color: #4a9eff; border-color: #4a9eff; }
+.btn-swap {
+  background: var(--green);
+  border: none;
+  color: #000;
+  padding: 3px 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  transition: opacity .12s;
+  white-space: nowrap;
+}
+.btn-swap:hover { opacity: .85; }
+.btn-swap:disabled { opacity: .35; cursor: not-allowed; }
+.btn-open {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  text-decoration: none;
+  transition: color .12s;
+}
+.btn-open:hover { color: var(--text); }
+.no-results { font-size: 13px; color: var(--muted); padding: 6px 0; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 18px;
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .2s, transform .2s;
+  pointer-events: none;
+  z-index: 999;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok { border-left: 3px solid var(--green); }
+#toast.err { border-left: 3px solid var(--red); }
+</style>
+</head>
+<body>
+
+<div id="login-view">
+  <div class="logo">DJ Swapper</div>
+  <p class="tagline">Find extended &amp; club mixes for your DJ playlists</p>
+  <a href="/auth/login" class="btn-spotify">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.371-.721.49-1.101.24-3.021-1.858-6.832-2.278-11.322-1.237-.418.101-.849-.159-.949-.578-.101-.418.158-.849.578-.949 4.91-1.121 9.121-.641 12.502 1.431.38.24.49.721.24 1.101l.052-.008zm1.472-3.27c-.301.459-.939.619-1.398.319-3.459-2.121-8.73-2.74-12.822-1.5-.49.139-1.012-.148-1.151-.638-.139-.49.148-1.012.638-1.151 4.68-1.399 10.5-.72 14.459 1.741.459.3.62.939.32 1.399l-.046-.17zm.129-3.408c-4.148-2.461-10.99-2.691-14.949-1.489-.631.19-1.299-.161-1.49-.791-.19-.629.16-1.299.79-1.49 4.551-1.381 12.12-1.111 16.891 1.729.579.341.771 1.08.43 1.66-.341.58-1.08.771-1.66.43l-.012-.049z"/></svg>
+    Connect with Spotify
+  </a>
+  <div class="error-banner" id="error-banner"></div>
+</div>
+
+<div id="app-view">
+  <header>
+    <span class="header-logo">DJ Swapper</span>
+    <span class="header-user" id="header-user"></span>
+    <button class="btn-sm" onclick="location.href='/auth/logout'">Log out</button>
+  </header>
+  <main>
+    <div id="sidebar">
+      <div class="panel-label">Your Playlists</div>
+      <div id="playlist-list"><div class="center-state"><div class="spinner"></div></div></div>
+    </div>
+    <div id="tracks-area">
+      <div id="tracks-placeholder" class="center-state">
+        <div class="icon">🎵</div>
+        <p>Pick a playlist to get started</p>
+      </div>
+      <div id="tracks-content" style="display:none; flex-direction:column; height:100%; overflow:hidden;">
+        <div id="tracks-header">
+          <h2 id="pl-name"></h2>
+          <div id="tracks-subtitle"></div>
+        </div>
+        <div id="tracks-scroll"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const st = {
+  playlists: [],
+  activePl: null,
+  tracks: [],
+  openIdx: null,
+  cache: {},      // trackIdx → results[]
+  audio: null,
+  playId: null,
+};
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmt(ms) {
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2,'0')}`;
+}
+
+function durClass(ms) {
+  if (ms >= 360_000) return 'long';
+  if (ms >= 270_000) return 'mid';
+  return 'short';
+}
+
+function toast(msg, type = 'ok') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+async function apiFetch(url, opts = {}) {
+  const res = await fetch(url, opts);
+  if (res.status === 401) { location.href = '/'; return null; }
+  if (res.status === 204) return null;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+// Boot
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const err = params.get('error');
+  if (err) {
+    const b = $('error-banner');
+    b.textContent = 'Spotify error: ' + err;
+    b.style.display = 'block';
+    history.replaceState({}, '', '/');
+  }
+
+  const { loggedIn } = await apiFetch('/auth/status');
+  if (!loggedIn) return;
+
+  $('login-view').style.display = 'none';
+  $('app-view').classList.add('active');
+
+  const [me, playlists] = await Promise.all([
+    apiFetch('/api/me'),
+    apiFetch('/api/playlists'),
+  ]);
+
+  $('header-user').textContent = me.display_name || me.id;
+  st.playlists = playlists;
+  renderPlaylists(playlists);
+}
+
+function renderPlaylists(pls) {
+  const el = $('playlist-list');
+  if (!pls.length) { el.innerHTML = '<div class="center-state"><p>No playlists found</p></div>'; return; }
+  el.innerHTML = pls.map(p => `
+    <div class="pl-item" data-id="${esc(p.id)}">
+      ${p.images?.[0] ? `<img class="pl-thumb" src="${esc(p.images[0].url)}" alt="">` : '<div class="pl-thumb"></div>'}
+      <div>
+        <div class="pl-name" title="${esc(p.name)}">${esc(p.name)}</div>
+        <div class="pl-count">${p.tracks.total} tracks</div>
+      </div>
+    </div>
+  `).join('');
+
+  el.querySelectorAll('.pl-item').forEach(item => {
+    item.addEventListener('click', () => selectPlaylist(item.dataset.id));
+  });
+}
+
+async function selectPlaylist(id) {
+  document.querySelectorAll('.pl-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  st.activePl = id;
+  st.tracks = [];
+  st.openIdx = null;
+  st.cache = {};
+  stopAudio();
+
+  const pl = st.playlists.find(p => p.id === id);
+  $('pl-name').textContent = pl?.name || 'Playlist';
+  $('tracks-subtitle').textContent = 'Loading…';
+  $('tracks-scroll').innerHTML = '<div class="center-state"><div class="spinner"></div></div>';
+  $('tracks-placeholder').style.display = 'none';
+  const tc = $('tracks-content');
+  tc.style.display = 'flex';
+
+  try {
+    const items = await apiFetch(`/api/playlists/${id}/tracks`);
+    st.tracks = items;
+    $('tracks-subtitle').textContent = `${items.length} tracks — click "Find Extended Mix" on any track`;
+    renderTracks(items);
+  } catch (e) {
+    $('tracks-scroll').innerHTML = `<div class="center-state"><p>Error: ${esc(e.message)}</p></div>`;
+  }
+}
+
+function renderTracks(items) {
+  const el = $('tracks-scroll');
+  if (!items.length) { el.innerHTML = '<div class="center-state"><p>Playlist is empty</p></div>'; return; }
+  el.innerHTML = items.map((item, i) => {
+    const t = item.track;
+    const img = t.album?.images?.[2]?.url || t.album?.images?.[0]?.url || '';
+    return `
+      <div class="track-row" id="tr-${i}">
+        <div class="track-main">
+          <span class="track-num">${i + 1}</span>
+          ${img ? `<img class="track-thumb" src="${esc(img)}" alt="">` : '<div class="track-thumb"></div>'}
+          <div class="track-info">
+            <div class="track-title" title="${esc(t.name)}">${esc(t.name)}</div>
+            <div class="track-artist">${esc(t.artists?.map(a => a.name).join(', ') || '')}</div>
+          </div>
+          <span class="track-dur ${t.duration_ms >= 360_000 ? 'long' : ''}">${fmt(t.duration_ms)}</span>
+          <button class="btn-find" data-idx="${i}">Find Extended Mix</button>
+        </div>
+        <div class="results-panel" id="rp-${i}"></div>
+      </div>
+    `;
+  }).join('');
+
+  el.querySelectorAll('.btn-find').forEach(btn => {
+    btn.addEventListener('click', () => toggleSearch(Number(btn.dataset.idx)));
+  });
+}
+
+async function toggleSearch(i) {
+  const rp = $(`rp-${i}`);
+  const btn = $('tracks-scroll').querySelector(`.btn-find[data-idx="${i}"]`);
+
+  if (st.openIdx === i) {
+    rp.style.display = 'none';
+    btn?.classList.remove('open');
+    st.openIdx = null;
+    return;
+  }
+
+  // Close previous
+  if (st.openIdx !== null) {
+    $(`rp-${st.openIdx}`).style.display = 'none';
+    $('tracks-scroll').querySelector(`.btn-find[data-idx="${st.openIdx}"]`)?.classList.remove('open');
+  }
+
+  st.openIdx = i;
+  btn?.classList.add('open');
+  rp.style.display = 'block';
+
+  if (st.cache[i]) { renderResults(i, st.cache[i]); return; }
+
+  rp.innerHTML = '<div style="padding:12px 0"><div class="spinner" style="margin:0 auto"></div></div>';
+
+  const t = st.tracks[i].track;
+  try {
+    const results = await apiFetch(
+      `/api/search-extended?track=${encodeURIComponent(t.name)}&artist=${encodeURIComponent(t.artists?.[0]?.name || '')}`
+    );
+    st.cache[i] = results;
+    renderResults(i, results);
+  } catch (e) {
+    rp.innerHTML = `<div class="no-results">Search error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderResults(i, results) {
+  const rp = $(`rp-${i}`);
+  if (!results?.length) {
+    rp.innerHTML = '<div class="no-results">No extended mixes found on Spotify. Try searching manually in the app.</div>';
+    return;
+  }
+  rp.innerHTML = `
+    <div class="results-label">Extended &amp; Club Mixes — longer duration = more likely extended</div>
+    ${results.map((r, ri) => `
+      <div class="result-item" id="ri-${i}-${ri}">
+        ${r.image ? `<img class="result-thumb" src="${esc(r.image)}" alt="">` : '<div class="result-thumb"></div>'}
+        <div class="result-info">
+          <div class="result-name" title="${esc(r.name)}">${esc(r.name)}</div>
+          <div class="result-meta">${esc(r.artists)} &middot; ${esc(r.album)}</div>
+        </div>
+        <span class="result-dur ${durClass(r.duration_ms)}">${fmt(r.duration_ms)}</span>
+        <div class="result-actions">
+          ${r.preview_url ? `<button class="btn-preview" data-ti="${i}" data-ri="${ri}">&#9654; Preview</button>` : ''}
+          <a class="btn-open" href="${esc(r.external_url)}" target="_blank" rel="noopener">&#x2197;</a>
+          <button class="btn-swap" data-ti="${i}" data-ri="${ri}" ${r.uri === st.tracks[i]?.track?.uri ? 'disabled' : ''}>Swap In</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+
+  // Attach listeners safely (avoids URL-in-onclick injection risk)
+  rp.querySelectorAll('.btn-preview').forEach(btn => {
+    const ti = Number(btn.dataset.ti), ri = Number(btn.dataset.ri);
+    btn.addEventListener('click', () => togglePreview(results[ri].preview_url, ti, ri));
+  });
+  rp.querySelectorAll('.btn-swap').forEach(btn => {
+    const ti = Number(btn.dataset.ti), ri = Number(btn.dataset.ri);
+    btn.addEventListener('click', () => doSwap(ti, ri));
+  });
+}
+
+function stopAudio() {
+  if (st.audio) { st.audio.pause(); st.audio = null; }
+  if (st.playId !== null) {
+    const [ti, ri] = st.playId;
+    const btn = document.querySelector(`#ri-${ti}-${ri} .btn-preview`);
+    if (btn) { btn.textContent = '▶ Preview'; btn.classList.remove('playing'); }
+    st.playId = null;
+  }
+}
+
+function togglePreview(url, ti, ri) {
+  const btn = document.querySelector(`#ri-${ti}-${ri} .btn-preview`);
+  if (st.playId && st.playId[0] === ti && st.playId[1] === ri) { stopAudio(); return; }
+  stopAudio();
+  st.audio = new Audio(url);
+  st.audio.volume = 0.5;
+  st.audio.play();
+  st.playId = [ti, ri];
+  if (btn) { btn.textContent = '■ Stop'; btn.classList.add('playing'); }
+  st.audio.onended = stopAudio;
+}
+
+async function doSwap(ti, ri) {
+  const result = st.cache[ti]?.[ri];
+  const oldTrack = st.tracks[ti]?.track;
+  if (!result || !oldTrack) return;
+
+  const swapBtn = document.querySelector(`#ri-${ti}-${ri} .btn-swap`);
+  if (swapBtn) { swapBtn.disabled = true; swapBtn.textContent = 'Swapping…'; }
+
+  try {
+    await apiFetch(`/api/playlists/${st.activePl}/swap`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldUri: oldTrack.uri, newUri: result.uri, position: ti }),
+    });
+
+    // Optimistic UI update
+    const row = $(`tr-${ti}`);
+    if (row) {
+      row.querySelector('.track-title').textContent = result.name;
+      row.querySelector('.track-artist').textContent = result.artists;
+      const durEl = row.querySelector('.track-dur');
+      durEl.textContent = fmt(result.duration_ms);
+      durEl.className = `track-dur ${result.duration_ms >= 360_000 ? 'long' : ''}`;
+      row.classList.add('swapped');
+    }
+
+    // Update state
+    st.tracks[ti].track = { ...oldTrack, name: result.name, uri: result.uri, duration_ms: result.duration_ms };
+    delete st.cache[ti];
+
+    // Close results panel
+    $(`rp-${ti}`).style.display = 'none';
+    document.querySelector(`.btn-find[data-idx="${ti}"]`)?.classList.remove('open');
+    st.openIdx = null;
+
+    toast(`Swapped in "${result.name}"`);
+  } catch (e) {
+    toast(`Swap failed: ${e.message}`, 'err');
+    if (swapBtn) { swapBtn.disabled = false; swapBtn.textContent = 'Swap In'; }
+  }
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>
